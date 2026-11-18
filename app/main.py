@@ -20,6 +20,10 @@ def create_app():
     def home(): return redirect("/m/1")
     @app.get("/m/<int:stage>")
     def page(stage): return view(stage)
+    @app.get("/m/8")
+    def delivery_page():
+        from app.web import delivery_view
+        return delivery_view(request.args.get("run", ""))
     @app.post("/api/runs")
     def start():
         if request.files:

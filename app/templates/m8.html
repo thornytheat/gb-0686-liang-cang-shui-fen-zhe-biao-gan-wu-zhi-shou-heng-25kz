@@ -1,0 +1,88 @@
+{% extends "base.html" %}{% block content %}
+<div class="grain-columns">
+  <section class="panel">
+    <div class="panel__head"><h2>分次提货</h2><sup>07</sup></div>
+    <div class="rulers">
+      <form id="register-form" data-run="{{result.manifest.run_id}}">
+        <button class="btn primary" type="submit">按已复核仓批登记提货账户</button>
+      </form>
+      <p class="hint">干物质按实扣减，凭证即时开出并锁定；末次提完余量归零，凭证总额与仓批复核金额对账。</p>
+    </div>
+    <dl>
+      <dt>复核状态</dt><dd>{{result.review}}</dd>
+      <dt>仓批目标金额</dt><dd id="grand-target">{{overview.totals.target_amount}} CNY</dd>
+      <dt>已开凭证金额</dt><dd id="grand-opened">{{overview.totals.opened_amount}} CNY</dd>
+      <dt>对账尾差</dt><dd id="grand-diff">{{overview.totals.diff_amount}} CNY</dd>
+      <dt>对账结论</dt><dd id="grand-match">{% if overview.totals.all_matched %}<span class="state">账实相符</span>{% elif overview.bins %}提货中{% else %}未登记{% endif %}</dd>
+    </dl>
+  </section>
+
+  <section class="panel span-two">
+    <div class="panel__head"><h2>仓批可提余量</h2></div>
+    <div class="table-wrap">
+      <table class="ledger" id="bin-table">
+        <thead><tr><th>仓号</th><th>干物质总量 kg</th><th>可提余量 kg</th><th>目标金额</th><th>已开金额</th><th>凭证数</th><th>状态</th><th>对账</th></tr></thead>
+        <tbody>
+        {% for b in overview.bins %}
+          <tr data-bin="{{b.bin}}" data-remaining="{{b.remaining_dry_kg}}">
+            <td>{{b.bin}}</td>
+            <td class="num">{{'%.3f'|format(b.total_dry_kg|float)}}</td>
+            <td class="num remaining">{{'%.6f'|format(b.remaining_dry_kg|float)}}</td>
+            <td class="num">{{'%.2f'|format(b.target_amount|float)}}</td>
+            <td class="num opened">{{'%.2f'|format(b.opened_amount|float)}}</td>
+            <td class="num">{{b.voucher_count}}</td>
+            <td>{{b.status}}</td>
+            <td class="{% if b.reconcile.matched %}state{% endif %}">{% if b.reconcile.closed %}{% if b.reconcile.matched %}相符{% else %}差{{b.reconcile.diff_amount}}{% endif %}{% else %}提货中{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8">尚未登记提货账户，先点击左侧登记按钮。</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head"><h2>本次提货开单</h2></div>
+    <form id="take-form" data-run="{{result.manifest.run_id}}" class="intake">
+      <label>仓号
+        <select name="bin" required>
+          {% for b in overview.bins %}<option value="{{b.bin}}">{{b.bin}}（余量 {{b.remaining_dry_kg}} kg）</option>{% endfor %}
+        </select>
+      </label>
+      <label>本次实提干物质 kg
+        <input name="taken_dry_kg" inputmode="decimal" placeholder="如 120.5" required>
+      </label>
+      <label>幂等键（重试不变，防止重复开单）
+        <input name="idempotency_key" placeholder="如 truck-20261118-01" required>
+      </label>
+      <button class="btn primary" type="submit">提交提货并开凭证</button>
+    </form>
+    <div id="take-result" class="verdict" hidden></div>
+  </section>
+
+  <section class="panel span-two">
+    <div class="panel__head"><h2>结算凭证</h2></div>
+    <div class="table-wrap">
+      <table class="ledger" id="voucher-table">
+        <thead><tr><th>凭证号</th><th>仓号</th><th>幂等键</th><th>实提干物质 kg</th><th>扣后余量 kg</th><th>凭证金额</th><th>累计金额</th><th>开出时间(UTC)</th></tr></thead>
+        <tbody>
+        {% for v in overview.vouchers %}
+          <tr>
+            <td>{{v.bin}}-{{'%03d'|format(v.seq)}}</td><td>{{v.bin}}</td><td>{{v.idempotency_key}}</td>
+            <td class="num">{{'%.6f'|format(v.taken_dry_kg|float)}}</td>
+            <td class="num">{{'%.6f'|format(v.remaining_after_kg|float)}}</td>
+            <td class="num">{{'%.2f'|format(v.amount|float)}}</td>
+            <td class="num">{{'%.2f'|format(v.cumulative_amount|float)}}</td>
+            <td>{{v.created[:19]}}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8">暂无凭证。</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/delivery.js" defer></script>{% endblock %}

@@ -29,3 +29,8 @@ target/
 *.o
 *.obj
 .DS_Store
+# 运行数据（runs.sqlite / delivery.sqlite 及 WAL 伴随文件）
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
